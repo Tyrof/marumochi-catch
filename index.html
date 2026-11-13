@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>まるもちキャッチ - もちもちミニゲーム</title>
+  <style>
+    :root {
+      --bg-top: #e0f2fe;
+      --bg-bottom: #fef3c7;
+      --char-border: #5c3826;
+      --pink-cheek: #ff94b4;
+      --gold-star: #fbbf24;
+      --mochi-color: #ffffff;
+      --font-main: "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: linear-gradient(180deg, var(--bg-top) 0%, #fef9c3 60%, var(--bg-bottom) 100%);
+      font-family: var(--font-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #451a03;
+    }
+
+    /* ゲームコンテナ（スマホ最適化縦横比） */
+    #game-container {
+      position: relative;
+      width: 100%;
+      max-width: 440px;
+      height: 100%;
+      max-height: 850px;
+      background: linear-gradient(180deg, #bae6fd 0%, #e0f2fe 40%, #fef08a 85%, #fde047 100%);
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @media (min-width: 500px) and (min-height: 700px) {
+      #game-container {
+        border-radius: 28px;
+        height: 92vh;
+        border: 4px solid #fff;
+      }
+    }
+
+    /* 雲の背景アニメーション */
+    .cloud {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 50px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .cloud::before, .cloud::after {
+      content: '';
+      position: absolute;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+    }
+    .cloud-1 {
+      width: 90px;
+      height: 30px;
+      top: 12%;
+      left: 10%;
+      animation: floatCloud 24s linear infinite;
+    }
+    .cloud-1::before { width: 36px; height: 36px; top: -16px; left: 16px; }
+    .cloud-1::after { width: 26px; height: 26px; top: -10px; left: 44px; }
+
+    .cloud-2 {
+      width: 120px;
+      height: 36px;
+      top: 25%;
+      right: -20px;
+      animation: floatCloud 32s linear infinite reverse;
+    }
+    .cloud-2::before { width: 44px; height: 44px; top: -20px; left: 24px; }
+    .cloud-2::after { width: 34px; height: 34px; top: -14px; left: 60px; }
+
+    @keyframes floatCloud {
+      0% { transform: translateX(-60px); }
+      50% { transform: translateX(60px); }
+      100% { transform: translateX(-60px); }
+    }
+
+    /* ヘッダー UI（制限時間・スコア・サウンド） */
+    #header-ui {
+      position: relative;
+      z-index: 10;
+      padding: 12px 14px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(8px);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.8);
+      gap: 8px;
+    }
+
+    .stat-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #fff;
+      padding: 4px 10px;
+      border-radius: 14px;
+      border: 2px solid var(--char-border);
+      box-shadow: 0 3px 0 var(--char-border);
+      min-width: 68px;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      font-weight: bold;
+      color: #854d0e;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .stat-val {
+      font-size: 18px;
+      font-weight: 900;
+      color: #451a03;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #time-bar-wrap {
+      flex: 1;
+      margin: 0 4px;
+      height: 14px;
+      background: #e2e8f0;
+      border: 2px solid var(--char-border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    #time-bar {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+      background-size: 200% 100%;
+      transition: width 0.1s linear;
+      border-radius: 6px;
+    }
+
+    /* サウンド切り替えボタン（ヘッダー内に統一配置） */
+    #sound-toggle {
+      background: #fff;
+      border: 2px solid var(--char-border);
+      border-radius: 12px;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      cursor: pointer;
+      box-shadow: 0 3px 0 var(--char-border);
+      flex-shrink: 0;
+      transition: all 0.08s ease;
+    }
+
+    #sound-toggle:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 var(--char-border);
+    }
+
+    /* ゲームプレイ領域 */
+    #play-area {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    /* 落ちてくるアイテム */
+    .falling-item {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 5;
+      filter: drop-shadow(0 3px 4px rgba(0,0,0,0.15));
+      will-change: transform;
+    }
+
+    /* 地面ライン */
+    #ground {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 45px;
+      background: #78350f;
+      border-top: 5px solid #a16207;
+      z-index: 4;
+    }
+
+    /* プレイヤー：まるもち */
+    #player-wrap {
+      position: absolute;
+      bottom: 30px; /* 地面から少し上 */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 84px;
+      height: 74px;
+      z-index: 6;
+      cursor: grab;
+      will-change: left, transform;
+    }
+
+    #player-wrap:active {
+      cursor: grabbing;
+    }
+
+    .marumochi-body {
+      width: 100%;
+      height: 100%;
+      transform-origin: bottom center;
+      transition: transform 0.08s ease-out;
+    }
+
+    /* ぷにっと潰れて跳ねるアニメーション */
+    .squish {
+      animation: squishAnim 0.35s cubic-bezier(0.25, 1.4, 0.5, 1);
+    }
+
+    @keyframes squishAnim {
+      0% { transform: scale(1, 1); }
+      30% { transform: scale(1.35, 0.65); }
+      60% { transform: scale(0.85, 1.2); }
+      85% { transform: scale(1.08, 0.95); }
+      100% { transform: scale(1, 1); }
+    }
+
+    /* キャッチポップアップ演出 */
+    .popup-score {
+      position: absolute;
+      font-size: 20px;
+      font-weight: 900;
+      pointer-events: none;
+      z-index: 15;
+      animation: floatUp 0.7s ease-out forwards;
+      text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff;
+    }
+    .popup-star { color: #d97706; }
+    .popup-mochi { color: #db2777; }
+
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translate(-50%, 0) scale(0.8); }
+      50% { transform: translate(-50%, -30px) scale(1.2); }
+      100% { opacity: 0; transform: translate(-50%, -55px) scale(1); }
+    }
+
+    /* スマホ用タッチボタン */
+    #touch-controls {
+      position: relative;
+      z-index: 10;
+      height: 80px;
+      background: rgba(255, 255, 255, 0.85);
+      border-top: 3px solid var(--char-border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 6px 16px env(safe-area-inset-bottom, 6px);
+      gap: 16px;
+    }
+
+    .touch-btn {
+      flex: 1;
+      height: 56px;
+      background: #fef08a;
+      border: 3px solid var(--char-border);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--char-border);
+      box-shadow: 0 4px 0 var(--char-border);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.05s ease;
+      touch-action: manipulation;
+    }
+
+    .touch-btn:active, .touch-btn.pressed {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 var(--char-border);
+      background: #fde047;
+    }
+
+    /* オーバーレイ（スタート・結果） */
+    .overlay-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(254, 249, 195, 0.94);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      text-align: center;
+      backdrop-filter: blur(5px);
+    }
+
+    .overlay-screen.hidden {
+      display: none;
+    }
+
+    .game-title {
+      font-size: 32px;
+      font-weight: 900;
+      color: #78350f;
+      margin-bottom: 6px;
+      text-shadow: 2px 2px 0 #fff;
+    }
+
+    .game-subtitle {
+      font-size: 14px;
+      font-weight: bold;
+      color: #92400e;
+      margin-bottom: 20px;
+    }
+
+    .dialog-card {
+      background: #fff;
+      border: 4px solid var(--char-border);
+      border-radius: 24px;
+      padding: 20px;
+      width: 100%;
+      max-width: 320px;
+      box-shadow: 0 8px 0 rgba(92, 56, 38, 0.3);
+      margin-bottom: 20px;
+    }
+
+    .rules-list {
+      list-style: none;
+      text-align: left;
+      font-size: 14px;
+      line-height: 1.8;
+      color: #5c3826;
+      margin: 10px 0;
+    }
+
+    .rules-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .primary-btn {
+      background: #f43f5e;
+      color: #fff;
+      font-size: 22px;
+      font-weight: 900;
+      padding: 14px 40px;
+      border-radius: 999px;
+      border: 4px solid var(--char-border);
+      box-shadow: 0 6px 0 var(--char-border);
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.08s ease;
+      touch-action: manipulation;
+    }
+
+    .primary-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 var(--char-border);
+    }
+
+    /* 結果画面専用 */
+    .result-score-box {
+      margin: 12px 0;
+    }
+    .result-score-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #78350f;
+    }
+    .result-score-val {
+      font-size: 46px;
+      font-weight: 900;
+      color: #e11d48;
+      line-height: 1.1;
+    }
+    .best-badge {
+      display: inline-block;
+      margin-top: 6px;
+      background: #fef08a;
+      border: 2px solid var(--char-border);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #78350f;
+    }
+    .new-record {
+      color: #e11d48;
+      font-weight: 900;
+      animation: pulse 0.8s infinite alternate;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.08); }
+    }
+
+    .result-comment {
+      font-size: 15px;
+      font-weight: bold;
+      color: #5c3826;
+      margin-top: 10px;
+      min-height: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <!-- 雲背景 -->
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+
+    <!-- 上部ヘッダー（スコア＆タイム＆サウンド） -->
+    <div id="header-ui">
+      <div class="stat-badge">
+        <span class="stat-label">のこり時間</span>
+        <span class="stat-val" id="time-text">30</span>
+      </div>
+
+      <div id="time-bar-wrap">
+        <div id="time-bar"></div>
+      </div>
+
+      <div class="stat-badge">
+        <span class="stat-label">スコア</span>
+        <span class="stat-val" id="score-text">0</span>
+      </div>
+
+      <button id="sound-toggle" title="音のオン/オフ">🔊</button>
+    </div>
+
+    <!-- ゲームプレイ領域 -->
+    <div id="play-area">
+      <!-- プレイヤー：まるもち -->
+      <div id="player-wrap">
+        <div class="marumochi-body" id="player-body">
+          <!-- まるもちのSVG描画（真っ白、茶色の太い輪郭、ピンクほっぺ） -->
+          <svg viewBox="0 0 100 88" width="100%" height="100%" style="overflow: visible;">
+            <defs>
+              <filter id="soft-shadow" x="-10%" y="-10%" width="120%" height="120%">
+                <feDropShadow dx="0" dy="3" stdDeviation="2" flood-opacity="0.15"/>
+              </filter>
+            </defs>
+            <!-- もちもちの丸いボディ（下膨れで柔らかい形） -->
+            <path d="M 50 4 
+                     C 78 4, 94 22, 94 48 
+                     C 94 72, 78 84, 50 84 
+                     C 22 84, 6 72, 6 48 
+                     C 6 22, 22 4, 50 4 Z" 
+                  fill="#ffffff" 
+                  stroke="#5c3826" 
+                  stroke-width="5" 
+                  stroke-linejoin="round"
+                  filter="url(#soft-shadow)"/>
+            
+            <!-- ピンクのふんわりほっぺ（左） -->
+            <ellipse cx="22" cy="53" rx="8" ry="5.5" fill="#ff94b4" opacity="0.85" />
+            <!-- ピンクのふんわりほっぺ（右） -->
+            <ellipse cx="78" cy="53" rx="8" ry="5.5" fill="#ff94b4" opacity="0.85" />
+
+            <!-- つぶらな目（左） -->
+            <circle cx="34" cy="45" r="4.5" fill="#422212" />
+            <circle cx="35.5" cy="43.5" r="1.5" fill="#ffffff" />
+
+            <!-- つぶらな目（右） -->
+            <circle cx="66" cy="45" r="4.5" fill="#422212" />
+            <circle cx="67.5" cy="43.5" r="1.5" fill="#ffffff" />
+
+            <!-- かわいいおくち（ωのような形） -->
+            <path d="M 44 50 Q 47 54 50 50 Q 53 54 56 50" 
+                  fill="none" 
+                  stroke="#5c3826" 
+                  stroke-width="3.5" 
+                  stroke-linecap="round" />
+            
+            <!-- 頭の上の小さなおもちのハイライト・ツヤ -->
+            <ellipse cx="36" cy="18" rx="8" ry="3.5" transform="rotate(-15 36 18)" fill="#ffffff" opacity="0.7"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 地面 -->
+      <div id="ground"></div>
+    </div>
+
+    <!-- スマホ・タッチ用左右操作ボタン -->
+    <div id="touch-controls">
+      <button class="touch-btn" id="btn-left">◀ ひだり</button>
+      <button class="touch-btn" id="btn-right">みぎ ▶</button>
+    </div>
+
+    <!-- スタート画面 -->
+    <div id="start-screen" class="overlay-screen">
+      <div style="width: 110px; height: 96px; margin-bottom: 12px;">
+        <svg viewBox="0 0 100 88" width="100%" height="100%">
+          <path d="M 50 4 C 78 4, 94 22, 94 48 C 94 72, 78 84, 50 84 C 22 84, 6 72, 6 48 C 6 22, 22 4, 50 4 Z" 
+                fill="#ffffff" stroke="#5c3826" stroke-width="5" stroke-linejoin="round"/>
+          <ellipse cx="22" cy="53" rx="8" ry="5.5" fill="#ff94b4" />
+          <ellipse cx="78" cy="53" rx="8" ry="5.5" fill="#ff94b4" />
+          <circle cx="34" cy="45" r="4.5" fill="#422212" />
+          <circle cx="35.5" cy="43.5" r="1.5" fill="#ffffff" />
+          <circle cx="66" cy="45" r="4.5" fill="#422212" />
+          <circle cx="67.5" cy="43.5" r="1.5" fill="#ffffff" />
+          <path d="M 44 50 Q 47 54 50 50 Q 53 54 56 50" fill="none" stroke="#5c3826" stroke-width="3.5" stroke-linecap="round" />
+        </svg>
+      </div>
+
+      <h1 class="game-title">まるもちキャッチ</h1>
+      <p class="game-subtitle">もちもち落ちものキャッチゲーム</p>
+
+      <div class="dialog-card">
+        <ul class="rules-list">
+          <li>
+            <svg width="24" height="24" viewBox="0 0 40 40">
+              <polygon points="20,2 25,14 38,14 28,23 32,36 20,28 8,36 12,23 2,14 15,14" fill="#fbbf24" stroke="#5c3826" stroke-width="3"/>
+            </svg>
+            <strong>星：10点</strong>
+          </li>
+          <li>
+            <svg width="24" height="24" viewBox="0 0 40 40">
+              <circle cx="20" cy="20" r="15" fill="#fff" stroke="#5c3826" stroke-width="3"/>
+              <ellipse cx="15" cy="21" rx="3" ry="2" fill="#ff94b4"/>
+              <ellipse cx="25" cy="21" rx="3" ry="2" fill="#ff94b4"/>
+              <circle cx="17" cy="18" r="1.5" fill="#422212"/>
+              <circle cx="23" cy="18" r="1.5" fill="#422212"/>
+            </svg>
+            <strong>小さなおもち：30点！</strong>
+          </li>
+          <li>⏱ <strong>制限時間：30秒</strong></li>
+          <li>👆 <strong>タップ・矢印キー・ドラッグで操作</strong></li>
+        </ul>
+        <div style="font-size: 13px; color: #78350f; margin-top: 6px;">
+          ベストスコア: <span id="start-best-score" style="font-weight:900;">0</span> 点
+        </div>
+      </div>
+
+      <button class="primary-btn" id="start-btn">スタート！</button>
+    </div>
+
+    <!-- 結果画面 -->
+    <div id="gameover-screen" class="overlay-screen hidden">
+      <h2 class="game-title" style="font-size: 28px;">タイムアップ！</h2>
+      <p class="game-subtitle">ゲーム終了です！</p>
+
+      <div class="dialog-card">
+        <div class="result-score-box">
+          <div class="result-score-title">あなたのスコア</div>
+          <div class="result-score-val" id="final-score">0</div>
+        </div>
+
+        <div class="best-badge">
+          最高記録: <span id="final-best-score">0</span> 点
+          <span id="new-record-label" class="new-record" style="display:none; margin-left: 4px;">★NEW!</span>
+        </div>
+
+        <div class="result-comment" id="result-comment">よくがんばったね！</div>
+      </div>
+
+      <button class="primary-btn" id="restart-btn">もう一度遊ぶ</button>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================
+       まるもちキャッチ ゲームスクリプト
+       ======================================================== */
+
+    // Web Audio API による効果音生成（外部ファイル不要）
+    class SoundManager {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playStar() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, now); // D5
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } catch(e) {}
+      }
+      playMochi() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          // ぷにっ♪ 音（ピッチベンドのサイン波）
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(350, now);
+          osc.frequency.exponentialRampToValueAtTime(650, now + 0.08);
+          osc.frequency.exponentialRampToValueAtTime(520, now + 0.2);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        } catch(e) {}
+      }
+      playFinish() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const notes = [523.25, 659.25, 783.99, 1046.50]; // C, E, G, C
+          notes.forEach((freq, idx) => {
+            const now = this.ctx.currentTime + idx * 0.1;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.25);
+          });
+        } catch(e) {}
+      }
+    }
+
+    const sound = new SoundManager();
+
+    // SVGテンプレート
+    const STAR_SVG = `
+      <svg viewBox="0 0 40 40" width="100%" height="100%">
+        <polygon points="20,2 25,14 38,14 28,23 32,36 20,28 8,36 12,23 2,14 15,14" 
+                 fill="#fbbf24" stroke="#5c3826" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- きらめきハイライト -->
+        <circle cx="16" cy="16" r="3" fill="#ffffff" opacity="0.9"/>
+      </svg>
+    `;
+
+    const MOCHI_SVG = `
+      <svg viewBox="0 0 44 40" width="100%" height="100%">
+        <!-- 小さなおもちボディ -->
+        <path d="M 22 4 C 34 4, 40 12, 40 24 C 40 34, 32 38, 22 38 C 12 38, 4 34, 4 24 C 4 12, 10 4, 22 4 Z" 
+              fill="#ffffff" stroke="#5c3826" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- ほっぺ -->
+        <ellipse cx="12" cy="26" rx="3.5" ry="2.2" fill="#ff94b4"/>
+        <ellipse cx="32" cy="26" rx="3.5" ry="2.2" fill="#ff94b4"/>
+        <!-- 目 -->
+        <circle cx="17" cy="22" r="2" fill="#422212"/>
+        <circle cx="27" cy="22" r="2" fill="#422212"/>
+        <!-- おくち -->
+        <path d="M 20 25 Q 22 27 24 25" fill="none" stroke="#5c3826" stroke-width="2" stroke-linecap="round"/>
+        <!-- 頭にちょこんと桜の花飾り -->
+        <circle cx="22" cy="6" r="2.5" fill="#f43f5e"/>
+      </svg>
+    `;
+
+    // ゲーム状態
+    const GAME_DURATION = 30; // 30秒
+    let timeLeft = GAME_DURATION;
+    let score = 0;
+    let isRunning = false;
+    let lastTimestamp = 0;
+    let spawnTimer = 0;
+    let items = [];
+    let playerX = 0; // px (playArea内の中心X)
+    let playAreaWidth = 360;
+    let playAreaHeight = 500;
+    const playerWidth = 84;
+    const playerHeight = 74;
+    const playerSpeed = 380; // px / 秒 (キーボード操作)
+
+    // キー入力状態
+    const keys = { left: false, right: false };
+
+    // DOM要素
+    const playArea = document.getElementById('play-area');
+    const playerWrap = document.getElementById('player-wrap');
+    const playerBody = document.getElementById('player-body');
+    const timeText = document.getElementById('time-text');
+    const timeBar = document.getElementById('time-bar');
+    const scoreText = document.getElementById('score-text');
+    const startScreen = document.getElementById('start-screen');
+    const gameoverScreen = document.getElementById('gameover-screen');
+    const startBtn = document.getElementById('start-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const startBestScore = document.getElementById('start-best-score');
+    const finalScore = document.getElementById('final-score');
+    const finalBestScore = document.getElementById('final-best-score');
+    const newRecordLabel = document.getElementById('new-record-label');
+    const resultComment = document.getElementById('result-comment');
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const soundToggle = document.getElementById('sound-toggle');
+
+    // ベストスコア管理
+    const STORAGE_KEY = 'marumochi_catch_highscore';
+    function getBestScore() {
+      return parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+    }
+    function saveBestScore(val) {
+      localStorage.setItem(STORAGE_KEY, val.toString());
+    }
+
+    // 初期化表示
+    startBestScore.textContent = getBestScore();
+
+    // サウンドトグル
+    soundToggle.addEventListener('click', () => {
+      sound.enabled = !sound.enabled;
+      soundToggle.textContent = sound.enabled ? '🔊' : '🔇';
+    });
+
+    // 画面リサイズ・サイズ計測
+    function updatePlayAreaSize() {
+      const rect = playArea.getBoundingClientRect();
+      playAreaWidth = rect.width;
+      playAreaHeight = rect.height;
+      if (playerX === 0) {
+        playerX = playAreaWidth / 2;
+      } else {
+        playerX = Math.max(playerWidth / 2, Math.min(playAreaWidth - playerWidth / 2, playerX));
+      }
+      updatePlayerPosition();
+    }
+    window.addEventListener('resize', updatePlayAreaSize);
+
+    function updatePlayerPosition() {
+      playerWrap.style.left = `${playerX}px`;
+    }
+
+    // キーボード操作
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        keys.left = true;
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        keys.right = true;
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+        keys.left = false;
+      } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+        keys.right = false;
+      }
+    });
+
+    // スマホ用左右ボタン操作
+    const setupButtonControl = (btn, dir) => {
+      const press = (e) => {
+        e.preventDefault();
+        sound.init();
+        if (dir === 'left') keys.left = true;
+        if (dir === 'right') keys.right = true;
+        btn.classList.add('pressed');
+      };
+      const release = (e) => {
+        e.preventDefault();
+        if (dir === 'left') keys.left = false;
+        if (dir === 'right') keys.right = false;
+        btn.classList.remove('pressed');
+      };
+      btn.addEventListener('touchstart', press, { passive: false });
+      btn.addEventListener('touchend', release, { passive: false });
+      btn.addEventListener('touchcancel', release, { passive: false });
+      btn.addEventListener('mousedown', press);
+      btn.addEventListener('mouseup', release);
+      btn.addEventListener('mouseleave', release);
+    };
+    setupButtonControl(btnLeft, 'left');
+    setupButtonControl(btnRight, 'right');
+
+    // プレイエリア内の直接タッチ／ドラッグ操作
+    let isTouching = false;
+    const handleTouchMove = (clientX) => {
+      const rect = playArea.getBoundingClientRect();
+      const relativeX = clientX - rect.left;
+      playerX = Math.max(playerWidth / 2, Math.min(playAreaWidth - playerWidth / 2, relativeX));
+      updatePlayerPosition();
+    };
+
+    playArea.addEventListener('pointerdown', (e) => {
+      isTouching = true;
+      sound.init();
+      handleTouchMove(e.clientX);
+    });
+    window.addEventListener('pointermove', (e) => {
+      if (isTouching && isRunning) {
+        handleTouchMove(e.clientX);
+      }
+    });
+    window.addEventListener('pointerup', () => {
+      isTouching = false;
+    });
+    window.addEventListener('pointercancel', () => {
+      isTouching = false;
+    });
+
+    // まるもちのぷにっと変形アニメーション
+    function triggerSquish() {
+      playerBody.classList.remove('squish');
+      void playerBody.offsetWidth; // リフローをトリガー
+      playerBody.classList.add('squish');
+    }
+
+    // スコアポップアップ表示
+    function showScorePopup(x, y, text, type) {
+      const popup = document.createElement('div');
+      popup.className = `popup-score popup-${type}`;
+      popup.textContent = text;
+      popup.style.left = `${x}px`;
+      popup.style.top = `${y}px`;
+      playArea.appendChild(popup);
+      setTimeout(() => {
+        if (popup.parentNode) popup.parentNode.removeChild(popup);
+      }, 700);
+    }
+
+    // アイテムの生成
+    function spawnItem() {
+      // 70%の確率で星(10点)、30%の確率で小さなおもち(30点)
+      const isMochi = Math.random() < 0.3;
+      const type = isMochi ? 'mochi' : 'star';
+      const points = isMochi ? 30 : 10;
+      const size = 44;
+
+      const minX = size / 2 + 10;
+      const maxX = playAreaWidth - size / 2 - 10;
+      const x = Math.random() * (maxX - minX) + minX;
+
+      // 落下速度（時間が経つにつれて少しだけ速くなる）
+      const progress = 1 - (timeLeft / GAME_DURATION);
+      const baseSpeed = 160 + progress * 90; 
+      const speed = baseSpeed + (Math.random() * 50 - 25);
+
+      const el = document.createElement('div');
+      el.className = 'falling-item';
+      el.innerHTML = isMochi ? MOCHI_SVG : STAR_SVG;
+      playArea.appendChild(el);
+
+      items.push({
+        el,
+        type,
+        points,
+        x,
+        y: -size,
+        speed,
+        rotation: 0,
+        rotSpeed: (Math.random() - 0.5) * 80
+      });
+    }
+
+    // ゲーム開始
+    function startGame() {
+      sound.init();
+      updatePlayAreaSize();
+      score = 0;
+      timeLeft = GAME_DURATION;
+      scoreText.textContent = '0';
+      timeText.textContent = GAME_DURATION;
+      timeBar.style.width = '100%';
+
+      // 既存アイテムクリア
+      items.forEach(item => {
+        if (item.el && item.el.parentNode) item.el.parentNode.removeChild(item.el);
+      });
+      items = [];
+
+      startScreen.classList.add('hidden');
+      gameoverScreen.classList.add('hidden');
+      isRunning = true;
+      lastTimestamp = performance.now();
+      spawnTimer = 0;
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // ゲーム終了
+    function endGame() {
+      isRunning = false;
+      sound.playFinish();
+
+      const best = getBestScore();
+      const isNew = score > best;
+      if (isNew) {
+        saveBestScore(score);
+      }
+      const updatedBest = getBestScore();
+
+      finalScore.textContent = score;
+      finalBestScore.textContent = updatedBest;
+      newRecordLabel.style.display = isNew && score > 0 ? 'inline' : 'none';
+
+      // スコアに応じたコメント
+      if (score >= 400) {
+        resultComment.textContent = 'すごい！まるもちマスター級のもちもちさ！🌸';
+      } else if (score >= 250) {
+        resultComment.textContent = '素晴らしいキャッチ力！まるもちも大喜び✨';
+      } else if (score >= 120) {
+        resultComment.textContent = 'ナイスファイト！とってももちもちしてるね♪';
+      } else {
+        resultComment.textContent = 'まるもちと一緒にまた遊んでね！😊';
+      }
+
+      gameoverScreen.classList.remove('hidden');
+    }
+
+    // メインループ
+    function gameLoop(timestamp) {
+      if (!isRunning) return;
+
+      const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.1);
+      lastTimestamp = timestamp;
+
+      // タイマー更新
+      timeLeft -= dt;
+      if (timeLeft <= 0) {
+        timeLeft = 0;
+        timeText.textContent = '0';
+        timeBar.style.width = '0%';
+        endGame();
+        return;
+      }
+
+      timeText.textContent = Math.ceil(timeLeft);
+      const ratio = Math.max(0, timeLeft / GAME_DURATION);
+      timeBar.style.width = `${ratio * 100}%`;
+
+      // プレイヤーのキーボード移動
+      if (keys.left) {
+        playerX -= playerSpeed * dt;
+      }
+      if (keys.right) {
+        playerX += playerSpeed * dt;
+      }
+      playerX = Math.max(playerWidth / 2, Math.min(playAreaWidth - playerWidth / 2, playerX));
+      updatePlayerPosition();
+
+      // アイテム生成管理（約0.45秒〜0.85秒間隔）
+      spawnTimer += dt;
+      const spawnInterval = 0.55 - (1 - (timeLeft / GAME_DURATION)) * 0.15;
+      if (spawnTimer >= spawnInterval) {
+        spawnTimer = 0;
+        spawnItem();
+      }
+
+      // 判定用のプレイヤー座標（キャッチ口付近）
+      const playerCatchY = playAreaHeight - 30 - playerHeight + 20; 
+      const playerBox = {
+        left: playerX - playerWidth * 0.44,
+        right: playerX + playerWidth * 0.44,
+        top: playerCatchY,
+        bottom: playerCatchY + 45
+      };
+
+      // アイテム更新 & 当たり判定
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        item.y += item.speed * dt;
+        item.rotation += item.rotSpeed * dt;
+
+        item.el.style.transform = `translate(${item.x}px, ${item.y}px) rotate(${item.rotation}deg)`;
+
+        // 当たり判定
+        const itemBox = {
+          left: item.x - 20,
+          right: item.x + 20,
+          top: item.y - 20,
+          bottom: item.y + 20
+        };
+
+        const isColliding = (
+          itemBox.right >= playerBox.left &&
+          itemBox.left <= playerBox.right &&
+          itemBox.bottom >= playerBox.top &&
+          itemBox.top <= playerBox.bottom
+        );
+
+        if (isColliding) {
+          // キャッチ成功！
+          score += item.points;
+          scoreText.textContent = score;
+
+          // ぷにっとアニメーション & サウンド
+          triggerSquish();
+          if (item.type === 'mochi') {
+            sound.playMochi();
+            showScorePopup(item.x, item.y, `+${item.points} ぷにっ!`, 'mochi');
+          } else {
+            sound.playStar();
+            showScorePopup(item.x, item.y, `+${item.points}`, 'star');
+          }
+
+          // DOM削除
+          item.el.remove();
+          items.splice(i, 1);
+          continue;
+        }
+
+        // 画面下端（地面）に到達したら消滅
+        if (item.y > playAreaHeight + 30) {
+          item.el.remove();
+          items.splice(i, 1);
+        }
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // ボタンイベント
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
+
+    // 初期化
+    window.addEventListener('load', () => {
+      updatePlayAreaSize();
+    });
+  </script>
+</body>
+</html>
