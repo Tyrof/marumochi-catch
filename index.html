@@ -575,7 +575,7 @@
           <button class="diff-btn" data-diff="normal">ふつう</button>
           <button class="diff-btn" data-diff="hard">むずかしい</button>
         </div>
-        <div style="font-size: 12px; color: #92400e; margin-top: 6px;" id="difficulty-note">ふつう：今まで通りの速さ</div>
+        <div style="font-size: 12px; color: #92400e; margin-top: 6px;" id="difficulty-note">かんたん：今まで通りの速さ</div>
       </div>
 
       <button class="primary-btn" id="start-btn">スタート！</button>
@@ -596,7 +596,7 @@
           最高記録: <span id="final-best-score">0</span> 点
           <span id="new-record-label" class="new-record" style="display:none; margin-left: 4px;">★NEW!</span>
         </div>
-        <div style="font-size: 13px; color: #78350f; margin-top: 4px;">難易度: <span id="final-difficulty">ふつう</span></div>
+        <div style="font-size: 13px; color: #78350f; margin-top: 4px;">難易度: <span id="final-difficulty">かんたん</span></div>
 
         <div class="result-comment" id="result-comment">よくがんばったね！</div>
       </div>
@@ -755,21 +755,25 @@
     // 難易度設定（3段階）
     const DIFFICULTY_KEY = 'marumochi_catch_difficulty';
     const DIFFICULTIES = {
-      easy:   { label: 'かんたん',   speedMul: 0.7, spawnMul: 1.25, scoreMul: 1, note: 'かんたん：ゆっくり落ちてくるよ' },
-      normal: { label: 'ふつう',     speedMul: 1.0, spawnMul: 1.0,  scoreMul: 1, note: 'ふつう：今まで通りの速さ' },
-      hard:   { label: 'むずかしい', speedMul: 1.4, spawnMul: 0.8,  scoreMul: 2, note: 'むずかしい：速い！そのぶん得点2倍' }
+      easy:   { label: 'かんたん',   speedMul: 1.0, spawnMul: 1.0,  scoreMul: 1,   note: 'かんたん：今まで通りの速さ' },
+      normal: { label: 'ふつう',     speedMul: 1.3, spawnMul: 0.85, scoreMul: 1.5, note: 'ふつう：少し速い！そのぶん得点1.5倍' },
+      hard:   { label: 'むずかしい', speedMul: 1.6, spawnMul: 0.7,  scoreMul: 2,   note: 'むずかしい：かなり速い！そのぶん得点2倍' }
     };
-    let currentDifficulty = localStorage.getItem(DIFFICULTY_KEY) || 'normal';
-    if (!DIFFICULTIES[currentDifficulty]) currentDifficulty = 'normal';
+    let currentDifficulty = localStorage.getItem(DIFFICULTY_KEY) || 'easy';
+    if (!DIFFICULTIES[currentDifficulty]) currentDifficulty = 'easy';
 
     // ベストスコア管理（難易度ごとに保存）
     const STORAGE_KEY = 'marumochi_catch_highscore';
     function getBestScore() {
       const v = localStorage.getItem(STORAGE_KEY + '_' + currentDifficulty);
-      if (v !== null) return parseInt(v, 10) || 0;
-      // 旧形式（難易度なし）の記録は「ふつう」の記録として引き継ぐ
-      if (currentDifficulty === 'normal') return parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
-      return 0;
+      if (currentDifficulty === 'easy') {
+        // 旧形式の記録と、前バージョンで「ふつう」（＝今までの速さ）に保存された記録は、
+        // どちらも今までの速さで得たものなので「かんたん」の記録として引き継ぐ
+        const legacy = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+        const prevNormal = parseInt(localStorage.getItem(STORAGE_KEY + '_normal') || '0', 10);
+        return Math.max(v !== null ? (parseInt(v, 10) || 0) : 0, legacy, prevNormal);
+      }
+      return v !== null ? (parseInt(v, 10) || 0) : 0;
     }
     function saveBestScore(val) {
       localStorage.setItem(STORAGE_KEY + '_' + currentDifficulty, val.toString());
