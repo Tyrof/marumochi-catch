@@ -757,7 +757,7 @@
     const DIFFICULTIES = {
       easy:   { label: 'かんたん',   speedMul: 1.0, spawnMul: 1.0,  scoreMul: 1,   note: 'かんたん：今まで通りの速さ' },
       normal: { label: 'ふつう',     speedMul: 1.45, spawnMul: 0.8, scoreMul: 1.5, note: 'ふつう：少し速い！そのぶん得点1.5倍' },
-      hard:   { label: 'むずかしい', speedMul: 2.3, spawnMul: 0.6,  scoreMul: 2,   note: 'むずかしい：かなり速い！そのぶん得点2倍' }
+      hard:   { label: 'むずかしい', speedMul: 2.4, spawnMul: 0.7,  scoreMul: 2,   note: 'むずかしい：かなり速い！そのぶん得点2倍' }
     };
     let currentDifficulty = localStorage.getItem(DIFFICULTY_KEY) || 'easy';
     if (!DIFFICULTIES[currentDifficulty]) currentDifficulty = 'easy';
