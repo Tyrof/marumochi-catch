@@ -436,6 +436,9 @@
       margin-top: 10px;
       min-height: 24px;
     }
+      .difficulty-selector { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+    .diff-btn { flex: 1; max-width: 112px; padding: 9px 0; border-radius: 999px; border: 2px solid #d6a05a; background: #fff7ea; color: #78350f; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+    .diff-btn.selected { background: #f59e0b; border-color: #b45309; color: #fff; }
   </style>
 </head>
 <body>
@@ -567,6 +570,12 @@
         <div style="font-size: 13px; color: #78350f; margin-top: 6px;">
           ベストスコア: <span id="start-best-score" style="font-weight:900;">0</span> 点
         </div>
+        <div class="difficulty-selector" id="difficulty-selector">
+          <button class="diff-btn" data-diff="easy">かんたん</button>
+          <button class="diff-btn" data-diff="normal">ふつう</button>
+          <button class="diff-btn" data-diff="hard">むずかしい</button>
+        </div>
+        <div style="font-size: 12px; color: #92400e; margin-top: 6px;" id="difficulty-note">ふつう：今まで通りの速さ</div>
       </div>
 
       <button class="primary-btn" id="start-btn">スタート！</button>
@@ -587,6 +596,7 @@
           最高記録: <span id="final-best-score">0</span> 点
           <span id="new-record-label" class="new-record" style="display:none; margin-left: 4px;">★NEW!</span>
         </div>
+        <div style="font-size: 13px; color: #78350f; margin-top: 4px;">難易度: <span id="final-difficulty">ふつう</span></div>
 
         <div class="result-comment" id="result-comment">よくがんばったね！</div>
       </div>
@@ -742,17 +752,46 @@
     const btnRight = document.getElementById('btn-right');
     const soundToggle = document.getElementById('sound-toggle');
 
-    // ベストスコア管理
+    // 難易度設定（3段階）
+    const DIFFICULTY_KEY = 'marumochi_catch_difficulty';
+    const DIFFICULTIES = {
+      easy:   { label: 'かんたん',   speedMul: 0.7, spawnMul: 1.25, scoreMul: 1, note: 'かんたん：ゆっくり落ちてくるよ' },
+      normal: { label: 'ふつう',     speedMul: 1.0, spawnMul: 1.0,  scoreMul: 1, note: 'ふつう：今まで通りの速さ' },
+      hard:   { label: 'むずかしい', speedMul: 1.4, spawnMul: 0.8,  scoreMul: 2, note: 'むずかしい：速い！そのぶん得点2倍' }
+    };
+    let currentDifficulty = localStorage.getItem(DIFFICULTY_KEY) || 'normal';
+    if (!DIFFICULTIES[currentDifficulty]) currentDifficulty = 'normal';
+
+    // ベストスコア管理（難易度ごとに保存）
     const STORAGE_KEY = 'marumochi_catch_highscore';
     function getBestScore() {
-      return parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+      const v = localStorage.getItem(STORAGE_KEY + '_' + currentDifficulty);
+      if (v !== null) return parseInt(v, 10) || 0;
+      // 旧形式（難易度なし）の記録は「ふつう」の記録として引き継ぐ
+      if (currentDifficulty === 'normal') return parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+      return 0;
     }
     function saveBestScore(val) {
-      localStorage.setItem(STORAGE_KEY, val.toString());
+      localStorage.setItem(STORAGE_KEY + '_' + currentDifficulty, val.toString());
     }
 
+    // 難易度ボタンの配線
+    const finalDifficulty = document.getElementById('final-difficulty');
+    const difficultyNote = document.getElementById('difficulty-note');
+    const diffBtns = document.querySelectorAll('.diff-btn');
+    function refreshDifficultyUI() {
+      diffBtns.forEach(b => b.classList.toggle('selected', b.dataset.diff === currentDifficulty));
+      difficultyNote.textContent = DIFFICULTIES[currentDifficulty].note;
+      startBestScore.textContent = getBestScore();
+    }
+    diffBtns.forEach(b => b.addEventListener('click', () => {
+      currentDifficulty = b.dataset.diff;
+      localStorage.setItem(DIFFICULTY_KEY, currentDifficulty);
+      refreshDifficultyUI();
+    }));
+
     // 初期化表示
-    startBestScore.textContent = getBestScore();
+    refreshDifficultyUI();
 
     // サウンドトグル
     soundToggle.addEventListener('click', () => {
@@ -870,7 +909,7 @@
       // 70%の確率で星(10点)、30%の確率で小さなおもち(30点)
       const isMochi = Math.random() < 0.3;
       const type = isMochi ? 'mochi' : 'star';
-      const points = isMochi ? 30 : 10;
+      const points = (isMochi ? 30 : 10) * DIFFICULTIES[currentDifficulty].scoreMul;
       const size = 44;
 
       const minX = size / 2 + 10;
@@ -879,7 +918,7 @@
 
       // 落下速度（時間が経つにつれて少しだけ速くなる）
       const progress = 1 - (timeLeft / GAME_DURATION);
-      const baseSpeed = 160 + progress * 90; 
+      const baseSpeed = (160 + progress * 90) * DIFFICULTIES[currentDifficulty].speedMul; 
       const speed = baseSpeed + (Math.random() * 50 - 25);
 
       const el = document.createElement('div');
@@ -938,6 +977,7 @@
 
       finalScore.textContent = score;
       finalBestScore.textContent = updatedBest;
+      finalDifficulty.textContent = DIFFICULTIES[currentDifficulty].label;
       newRecordLabel.style.display = isNew && score > 0 ? 'inline' : 'none';
 
       // スコアに応じたコメント
@@ -987,7 +1027,7 @@
 
       // アイテム生成管理（約0.45秒〜0.85秒間隔）
       spawnTimer += dt;
-      const spawnInterval = 0.55 - (1 - (timeLeft / GAME_DURATION)) * 0.15;
+      const spawnInterval = (0.55 - (1 - (timeLeft / GAME_DURATION)) * 0.15) * DIFFICULTIES[currentDifficulty].spawnMul;
       if (spawnTimer >= spawnInterval) {
         spawnTimer = 0;
         spawnItem();
